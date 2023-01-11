@@ -1,7 +1,7 @@
 package app
 
 import (
-	"crypto/tls"
+	"log"
 	"net/http"
 	"strings"
 
@@ -38,28 +38,7 @@ func InitializeTheServer(port string, routes []Route, authMW echo.MiddlewareFunc
 
 	}
 
-	cfg := &tls.Config{
-		MinVersion:               tls.VersionTLS12,
-		CurvePreferences:         []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},
-		PreferServerCipherSuites: true,
-		CipherSuites: []uint16{
-			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-			tls.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
-			tls.TLS_RSA_WITH_AES_256_GCM_SHA384,
-			tls.TLS_RSA_WITH_AES_256_CBC_SHA,
-			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-		},
+	if err := e.StartTLS(":443", "server.crt", "server.key"); err != http.ErrServerClosed {
+		log.Fatal(err)
 	}
-
-	s := http.Server{
-		Addr:      ":443",
-		Handler:   e, // set Echo as handler
-		TLSConfig: cfg,
-		//ReadTimeout: 30 * time.Second, // use custom timeouts
-	}
-
-	if err := s.ListenAndServeTLS("server.crt", "server.key"); err != http.ErrServerClosed {
-		e.Logger.Fatal(err)
-	}
-
 }
