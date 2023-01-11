@@ -1,13 +1,10 @@
 package app
 
 import (
-	"log"
-	"net/http"
 	"strings"
 
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
-	"golang.org/x/crypto/acme/autocert"
 )
 
 type Route interface {
@@ -19,8 +16,6 @@ type Route interface {
 func InitializeTheServer(port string, routes []Route, authMW echo.MiddlewareFunc) {
 
 	e := echo.New()
-	e.AutoTLSManager.Cache = autocert.DirCache("/var/www/.cache")
-	e.Use(middleware.Recover())
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 		AllowOrigins:     []string{"*"},
 		AllowCredentials: true,
@@ -38,7 +33,5 @@ func InitializeTheServer(port string, routes []Route, authMW echo.MiddlewareFunc
 
 	}
 
-	if err := e.StartTLS(":443", "server.crt", "server.key"); err != http.ErrServerClosed {
-		log.Fatal(err)
-	}
+	e.Logger.Fatal(e.Start(":8081"))
 }
