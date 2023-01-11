@@ -7,7 +7,6 @@ import (
 
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
-	"golang.org/x/crypto/acme"
 	"golang.org/x/crypto/acme/autocert"
 )
 
@@ -39,24 +38,27 @@ func InitializeTheServer(port string, routes []Route, authMW echo.MiddlewareFunc
 
 	}
 
-	autoTLSManager := autocert.Manager{
-		Prompt: autocert.AcceptTOS,
-		// Cache certificates to avoid issues with rate limits (https://letsencrypt.org/docs/rate-limits)
-		Cache: autocert.DirCache("/var/www/.cache"),
-		//HostPolicy: autocert.HostWhitelist("<DOMAIN>"),
-	}
-	s := http.Server{
-		Addr:    ":443",
-		Handler: e, // set Echo as handler
-		TLSConfig: &tls.Config{
-			//Certificates: nil, // <-- s.ListenAndServeTLS will populate this field
-			GetCertificate: autoTLSManager.GetCertificate,
-			NextProtos:     []string{acme.ALPNProto},
+	cfg := &tls.Config{
+		MinVersion:               tls.VersionTLS12,
+		CurvePreferences:         []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},
+		PreferServerCipherSuites: true,
+		CipherSuites: []uint16{
+			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+			tls.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
+			tls.TLS_RSA_WITH_AES_256_GCM_SHA384,
+			tls.TLS_RSA_WITH_AES_256_CBC_SHA,
+			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
 		},
+	}
+
+	s := http.Server{
+		Addr:      ":443",
+		Handler:   e, // set Echo as handler
+		TLSConfig: cfg,
 		//ReadTimeout: 30 * time.Second, // use custom timeouts
 	}
 
-	if err := s.ListenAndServeTLS("", ""); err != http.ErrServerClosed {
+	if err := s.ListenAndServeTLS("server.crt", "server.key"); err != http.ErrServerClosed {
 		e.Logger.Fatal(err)
 	}
 
