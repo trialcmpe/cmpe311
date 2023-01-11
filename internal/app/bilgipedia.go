@@ -1,10 +1,13 @@
 package app
 
 import (
+	"crypto/tls"
+	"net/http"
 	"strings"
 
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
+	"golang.org/x/crypto/acme"
 	"golang.org/x/crypto/acme/autocert"
 )
 
@@ -36,5 +39,25 @@ func InitializeTheServer(port string, routes []Route, authMW echo.MiddlewareFunc
 
 	}
 
-	e.Logger.Fatal(e.StartAutoTLS(":443"))
+	autoTLSManager := autocert.Manager{
+		Prompt: autocert.AcceptTOS,
+		// Cache certificates to avoid issues with rate limits (https://letsencrypt.org/docs/rate-limits)
+		Cache: autocert.DirCache("/var/www/.cache"),
+		//HostPolicy: autocert.HostWhitelist("<DOMAIN>"),
+	}
+	s := http.Server{
+		Addr:    ":443",
+		Handler: e, // set Echo as handler
+		TLSConfig: &tls.Config{
+			//Certificates: nil, // <-- s.ListenAndServeTLS will populate this field
+			GetCertificate: autoTLSManager.GetCertificate,
+			NextProtos:     []string{acme.ALPNProto},
+		},
+		//ReadTimeout: 30 * time.Second, // use custom timeouts
+	}
+
+	if err := s.ListenAndServeTLS("", ""); err != http.ErrServerClosed {
+		e.Logger.Fatal(err)
+	}
+
 }
